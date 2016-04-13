@@ -1,62 +1,86 @@
-/*****************************************************************
- *                  Arduino CMPS10 example code                  *
- *          CMPS10 running I2C mode with serial monitor          *
- *     by Dick van Kalsbeek, ROC ter AA, Helmond, 20feb2015      *
- *                thanks to: James Henderson                     *
- *****************************************************************/
+//example for controlling the Honeywell HMC5883L 3 axis digital compass
+//created by: Dick van Kalsbeek, ROC Ter AA, Helmond, 27feb2016
+
+//i2c library
 #include <Wire.h>
 
-#define ADDRESS 0x60                                          // Defines address of CMPS10
+byte directionValues[6];
+int nr;
+
+#define HMC588L_INIT
 
 void setup()
 {
-  Wire.begin();   
+  Wire.begin();
   Serial.begin(9600);
-  Serial.println("Start up finished..");
+
+#ifdef HMC588L_INIT
+  //initialize first three registers
+  Wire.beginTransmission(0x1e);
+  Wire.write(0x00);
+  Wire.write(0x70);
+  Wire.endTransmission();
+
+  Wire.beginTransmission(0x1e);
+  Wire.write(0x01);
+  Wire.write(0xA0);
+  Wire.endTransmission();
+
+  Wire.beginTransmission(0x1e);
+  Wire.write(0x02);
+  Wire.write(0x00);
+  Wire.endTransmission();
+#endif
+
 }
 
 void loop()
 {
-  byte highByte, lowByte, fine;              // highByte and lowByte store high and low bytes of the bearing and fine stores decimal place of bearing
-  byte pitch, roll;                          // Stores pitch and roll values of CMPS10, chars are used because they support signed value
-  int bearing;                               // Stores full bearing
-
-  //Serial.println("Start communication with CMPS10..");
-  Wire.beginTransmission(ADDRESS);           //starts communication with CMPS10
-  Wire.write(2);                              //Sends the register we wish to start reading from
-  Wire.endTransmission();
-
-  //Serial.println("Get data from CMPS10..");
-  Wire.requestFrom(ADDRESS, 4);              // Request 4 bytes from CMPS10
-  while(Wire.available() < 4);               // Wait for bytes to become available
-
-  highByte = Wire.read();           
-  lowByte = Wire.read();            
-  pitch = (byte)Wire.read();              
-  roll = (byte)Wire.read();               
-
-  bearing = ((highByte<<8)+lowByte)/10;      // Calculate full bearing
-  fine = ((highByte<<8)+lowByte)%10;         // Calculate decimal place of bearing
-  
-  Serial.println("#bearing: " + (String)bearing + "\t\t" + "fine: " + (String)fine + "\t\t" + 
-                 "pitch: " + (String)pitch + "\t\t" + "roll: " + (String)roll + "%"); 
-
-  delay(100);
+  read_HMC5883L_XYZ_registers();
 }
 
-/*int soft_ver()
- {
- int data;                                      // Software version of  CMPS10 is read into data and then returned
- 
- Wire.beginTransmission(ADDRESS);
- // Values of 0 being sent with write need to be masked as a byte so they are not misinterpreted as NULL this is a bug in arduino 1.0
- Wire.write((byte)0);                           // Sends the register we wish to start reading from
- Wire.endTransmission();
- 
- Wire.requestFrom(ADDRESS, 1);                  // Request byte from CMPS10
- while(Wire.available() < 1);
- data = Wire.read();           
- 
- return(data);
- }*/
+void read_HMC5883L_XYZ_registers()
+{
+  int X_assembled;
+  int Y_assembled;
+  int Z_assembled;
+
+  //WARNING: the send address in Arduino lacks the read/write bit,
+  //e.g.: 0x3C in normal operation, in Arduino is 0x1E
+  //00111100 >> 0011110
+  //the direction(read/write) is set by the wire command
+  Wire.beginTransmission(0x1e);
+  //set address pointer to first byte of the compass
+  Wire.write(0x03);
+  Wire.endTransmission();
+
+  Wire.requestFrom(0x1e, 6);
+  nr = 0;
+
+  while (Wire.available())
+  {
+    directionValues[nr] = Wire.read();
+    //directionValues[nr] = Wire.receive();
+    nr++;
+  }
+
+//  X_assembled = directionValues[0] << 8;
+//  X_assembled = X_assembled | directionValues[1];
+//  Y_assembled = directionValues[4] << 8;
+//  Y_assembled = Y_assembled | directionValues[5];
+//  Z_assembled = directionValues[3] << 8;
+//  Z_assembled = Z_assembled | directionValues[4];
+
+  //Serial.println("X: " + (String)X_assembled);
+  //Serial.println("Y: " + (String)Y_assembled);
+  //Serial.println("Z: " + (String)Z_assembled);
+
+Serial.println("X: msb:" + (String)directionValues[0] + " lsb:" + (String)directionValues[1]);
+Serial.println("Y: msb:" + (String)directionValues[4] + " lsb:" + (String)directionValues[5]);
+Serial.println("Z: msb:" + (String)directionValues[2] + " lsb:" + (String)directionValues[3]);
+  Serial.println();
+
+  delay(500);
+}
+
 
