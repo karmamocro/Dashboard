@@ -2,9 +2,9 @@
 //Disconnect the pins of the sensor before uploading the source
 //the connected pins will disable the PC/Arduino connection
 
-#define ECHOPIN 6                            // Pin to receive echo pulse
-#define TRIGPIN 7                            // Pin to send trigger pulse
-#define BUZZER 3
+#define ECHOPIN 51                            // Pin to receive echo pulse
+#define TRIGPIN 50                          // Pin to send trigger pulse
+#define BUZZER 53
 void setup(){
   Serial.begin(9600);
   pinMode(ECHOPIN, INPUT);
